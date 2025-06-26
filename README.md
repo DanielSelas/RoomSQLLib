@@ -37,15 +37,15 @@ Plug your existing RoomDatabase instance into the library to get started quickly
 ---
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/fb8a5914-43f9-4292-b202-835895fd2d36" width="400" />
+  <img src="https://github.com/user-attachments/assets/fb8a5914-43f9-4292-b202-835895fd2d36" width="500" />
 </p>
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/7f30446f-77a0-40b2-8fdb-050759b1ed07" width="400" />
+  <img src="https://github.com/user-attachments/assets/7f30446f-77a0-40b2-8fdb-050759b1ed07" width="500" />
 </p>
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/9716450c-de3a-4140-bb54-2e8e1e366ed2" width="400" />
+  <img src="https://github.com/user-attachments/assets/9716450c-de3a-4140-bb54-2e8e1e366ed2" width="500" />
 </p>
 ---
 
