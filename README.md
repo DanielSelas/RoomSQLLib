@@ -34,7 +34,15 @@ Vanilla JS + HTML with dynamic checkboxes, forms, and data tables.
 
 ### Easy Integration  
 Plug your existing RoomDatabase instance into the library to get started quickly.
+---
 
+<table>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/fb8a5914-43f9-4292-b202-835895fd2d36" alt="Show Table" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/7f30446f-77a0-40b2-8fdb-050759b1ed07" alt="Chose locally" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/9716450c-de3a-4140-bb54-2e8e1e366ed2" alt="Main" width="300"/></td>
+  </tr>
+</table>
 ---
 
 ## 📚 Library Components
