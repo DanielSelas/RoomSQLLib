@@ -18,20 +18,22 @@ document.addEventListener("DOMContentLoaded", function () {
     function init() {
         loadTables();
         setupEventListeners();
+        setupCSVUploadListeners();
     }
 
-    function loadTables() {
-        fetch("/tables")
-            .then(response => response.json())
-            .then(tables => {
-                tables.forEach(name => {
-                    const option = document.createElement("option");
-                    option.value = name;
-                    option.textContent = name;
-                    tableSelect.appendChild(option);
-                });
-            });
-    }
+  function loadTables() {
+      fetch("/tables")
+          .then(response => response.json())
+          .then(tables => {
+              tableSelect.innerHTML = '<option value="">-- Choose --</option>';
+              tables.forEach(name => {
+                  const option = document.createElement("option");
+                  option.value = name;
+                  option.textContent = name;
+                  tableSelect.appendChild(option);
+              });
+          });
+  }
 
     function setupEventListeners() {
         tableSelect.addEventListener("change", onTableChange);
@@ -39,6 +41,64 @@ document.addEventListener("DOMContentLoaded", function () {
         exportBtn.addEventListener("click", onExportButtonClick);
         addBtn.addEventListener("click", onAddButtonClick);
         editForm.addEventListener("submit", onEditFormSubmit);
+
+         const resetViewBtn = document.getElementById("resetViewBtn");
+         resetViewBtn.addEventListener("click", () => {
+             currentTable = null;
+             availableColumns = [];
+             currentData = [];
+             editingRow = null;
+
+             tableSelect.value = "";
+             columnCheckboxes.innerHTML = "";
+             addFormContainer.innerHTML = "";
+             resultContainer.innerHTML = "";
+             exportBtn.style.display = "none";
+             editFormContainer.style.display = "none";
+
+             loadTables();
+         });
+    }
+
+    function setupCSVUploadListeners() {
+        const loadFromCsvBtn = document.getElementById("loadFromCsvBtn");
+        const csvFileInput = document.getElementById("csvFileInput");
+
+        if (!loadFromCsvBtn || !csvFileInput) return;
+
+        loadFromCsvBtn.addEventListener("click", () => {
+            csvFileInput.click();
+        });
+
+        csvFileInput.addEventListener("change", async function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+                const text = e.target.result;
+                const parsedData = parseCSV(text);
+
+                if (parsedData.length === 0) {
+                    alert("CSV is empty or invalid");
+                    return;
+                }
+
+                currentTable = "csvTempTable_" + file.name.replace(/\.[^/.]+$/, "");
+                currentData = parsedData;
+
+                availableColumns = Object.keys(parsedData[0]);
+                renderCheckboxes(availableColumns);
+                renderAddForm(availableColumns);
+
+                resultContainer.innerHTML = createTableHTML(currentData);
+                exportBtn.style.display = "inline-block";
+
+                alert("CSV loaded and ready for local operations");
+            };
+
+            reader.readAsText(file);
+        });
     }
 
     function onTableChange() {
@@ -51,11 +111,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 availableColumns = columns.map(col => col.name);
                 renderCheckboxes(availableColumns);
                 renderAddForm(availableColumns);
+                onLoadButtonClick();
             });
     }
 
     function onLoadButtonClick() {
         if (!currentTable) return;
+
+        if (currentTable.startsWith("csvTempTable_")) {
+            resultContainer.innerHTML = createTableHTML(currentData);
+            exportBtn.style.display = currentData.length ? "inline-block" : "none";
+            renderCheckboxes(availableColumns);
+            renderAddForm(availableColumns);
+            return;
+        }
+
         const selectedCols = getSelectedColumns();
         const query = selectedCols.length ? `?cols=${selectedCols.join(",")}` : "";
 
@@ -87,11 +157,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function onAddButtonClick() {
         if (!currentTable) return;
+
         const inputs = addFormContainer.querySelectorAll("input");
         const row = {};
         inputs.forEach(input => {
             row[input.name] = input.value;
         });
+
+        if (currentTable.startsWith("csvTempTable_")) {
+            currentData.push(row);
+            resultContainer.innerHTML = createTableHTML(currentData);
+            renderCheckboxes(availableColumns);
+            renderAddForm(availableColumns);
+            alert("Row added locally (CSV data)");
+            return;
+        }
 
         fetch(`/table/${currentTable}`, {
             method: "POST",
@@ -118,8 +198,23 @@ document.addEventListener("DOMContentLoaded", function () {
             updatedRow[key] = value;
         }
 
+        if (currentTable.startsWith("csvTempTable_")) {
+            const index = currentData.findIndex(row =>
+                JSON.stringify(row) === JSON.stringify(editingRow)
+            );
+            if (index !== -1) {
+                currentData[index] = updatedRow;
+                resultContainer.innerHTML = createTableHTML(currentData);
+                renderCheckboxes(availableColumns);
+                renderAddForm(availableColumns);
+                alert("Row edited locally (CSV data)");
+            }
+            closeEditForm();
+            return;
+        }
+
         fetch(`/table/${currentTable}`, {
-            method: "POST", // שולחים POST עם פרמטר _method לשרת לטיפול כ־PUT
+            method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
@@ -132,6 +227,32 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("loadBtn").click();
         })
         .catch(() => alert("Failed to update row"));
+    }
+
+    function deleteRow(row) {
+        if (!confirm("Are you sure you want to delete this row?")) return;
+
+        if (currentTable.startsWith("csvTempTable_")) {
+            currentData = currentData.filter(r => JSON.stringify(r) !== JSON.stringify(row));
+            resultContainer.innerHTML = createTableHTML(currentData);
+            renderCheckboxes(availableColumns);
+            renderAddForm(availableColumns);
+            alert("Row deleted locally (CSV data)");
+            return;
+        }
+
+        fetch(`/table/${currentTable}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ ...row, _method: "DELETE" })
+        })
+        .then(res => res.text())
+        .then(msg => {
+            alert(msg);
+            document.getElementById("loadBtn").click();
+        });
     }
 
     function renderCheckboxes(cols) {
@@ -159,23 +280,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return [...columnCheckboxes.querySelectorAll("input[type=checkbox]")]
             .filter(cb => cb.checked)
             .map(cb => cb.value);
-    }
-
-    function deleteRow(row) {
-        if (!confirm("Are you sure you want to delete this row?")) return;
-
-        fetch(`/table/${currentTable}`, {
-            method: "POST", // שולחים POST עם פרמטר _method לשרת לטיפול כ־DELETE
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ ...row, _method: "DELETE" })
-        })
-        .then(res => res.text())
-        .then(msg => {
-            alert(msg);
-            document.getElementById("loadBtn").click();
-        });
     }
 
     function editRow(row) {
@@ -236,4 +340,20 @@ function createTableHTML(data) {
 
     html += "</tbody></table>";
     return html;
+}
+
+function parseCSV(text) {
+    const lines = text.trim().split("\n");
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(",");
+    const data = lines.slice(1).map(line => {
+        const values = line.split(",");
+        const obj = {};
+        headers.forEach((header, i) => {
+            obj[header.trim()] = values[i]?.trim() || "";
+        });
+        return obj;
+    });
+    return data;
 }

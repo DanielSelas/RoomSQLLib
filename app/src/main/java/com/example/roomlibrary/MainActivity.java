@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
         ).allowMainThreadQueries().build();
 
         db.userDao().insert(new User(000000000L, "Alice", "alice@example.com"));
+        db.animalDao().insert(new Animal(0L, "Gerry", "Cat", 4, 12.2));
         RoomPortal.init(getApplicationContext(), db);
 
         openPortalButton.setOnClickListener(new View.OnClickListener() {
